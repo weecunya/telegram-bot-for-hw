@@ -1,13 +1,14 @@
-FROM python:3.14-slim
+FROM python:3.13-slim
 
-WORKDIR /src
+WORKDIR /app
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir openpyxl pandas && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /app/exports
+RUN mkdir -p /src/data /src/exports
 
-CMD ["python", "bot_main.py"]
+CMD ["python", "src/bot_main.py"]

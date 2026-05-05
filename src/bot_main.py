@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from bot_funcs import get_home, find_crypto, get_tomorrow_hometask, MyStates, bd_to_xlsx
 from db_config import *
-from src.config import Settings
+from config import Settings
 
 settings = Settings()
 bot = Bot(token=settings.token)
@@ -22,14 +22,10 @@ router = Router()
 dp.include_router(router)
 
 
-async def main():
-    await dp.start_polling(bot)
 
 @router.message(Command('start'))
 async def welcome(message):
     new_engine = create_async_engine('sqlite+aiosqlite:///23dcp.db')
-    async with new_engine.begin() as conn:
-        await conn.run_sync(Model.metadata.create_all)
     print('Someone is here')  #чекаю заходы
     print(message.from_user.username)
     print(message.from_user.id)
@@ -66,7 +62,7 @@ async def megalodon(message:Message, state: FSMContext):
         await state.set_state(MyStates.waiting_for_list)
     else:
         await message.answer('отказано')
-        await message.answer(1257829157, 'кто то пытался подглядеть')
+        await bot.send_message(1257829157, 'кто то пытался подглядеть')
 
 
 
@@ -118,7 +114,7 @@ async def list_of_users(message: Message, state: FSMContext):
                 for i in users:
                     visits += f'{i.user}, {i.idtg}, {i.time}\n'
                     print(visits)
-                await bot.send_message(settings.id_telegram,text=visits)
+                await bot.send_message(1257829157 ,text=visits)
             else:
                 await message.answer('нет данных')
     await state.clear()
@@ -237,7 +233,10 @@ async def choose_subject(message:Message, state:FSMContext):
         await get_hometask(message,state)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    async def main():
+        await create_all_tables()
+        await dp.start_polling(bot)
     asyncio.run(main())
 
 
