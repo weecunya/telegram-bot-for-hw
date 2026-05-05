@@ -1,30 +1,39 @@
+import sqlite3
 from sqlalchemy import select
-from telebot import types
 import time
-from db_config import DebilBase
-from telebot.async_telebot import AsyncTeleBot
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from db_config import DebilBase
 from config import Settings
 import requests
 from db_config import HW
+from aiogram import Router,Bot, Dispatcher
+from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from aiogram.fsm.state import StatesGroup, State
+import pandas
+
+
 
 settings = Settings()
+router = Router()
+dp = Dispatcher()
+bot = Bot(token=settings.token)
+dp.include_router(router)
 
-bot = AsyncTeleBot(settings.token)
 
+class MyStates(StatesGroup):
+    waiting_for_subject = State()
+    speaking_to_gpt = State()
+    waiting_for_list = State()
 
 async def get_home(message):
-    markup = types.ReplyKeyboardMarkup()
-    btn1 = types.KeyboardButton('английский\n(первая подгруппа)')
-    btn2 = types.KeyboardButton('все дз на завтра')
-    btn3 = types.KeyboardButton('педагогика,\nпсихология')
-    markup.row(btn1, btn2, btn3)
-    btn5 = types.KeyboardButton('бел,рус.язык,культура речи и лингвистика')
-    btn4 = types.KeyboardButton('мед.подготовка и анатомия')
-    btn6 = types.KeyboardButton('история, ибг, астрономия')
-    markup.row(btn4, btn5, btn6)
-    await bot.send_message(message.chat.id, 'выбрать еще', reply_markup = markup)
+    builder = ReplyKeyboardBuilder()
+    builder.button(text="английский")
+    builder.button(text="все дз на завтра")
+    builder.button(text="педагогика,психология")
+    builder.button(text="бел,рус.язык,культура речи и лингвистика")
+    builder.button(text="мед.подготовка и анатомия")
+    builder.button(text="история, ибг, астрономия")
+    builder.adjust(3,3)
+    await bot.send_message(message.chat.id, 'выбрать еще', reply_markup = builder.as_markup(resize_keyboard=True))
     return message
 
 
@@ -53,41 +62,38 @@ def get_tomorrow_date():
 
 
 async def get_tomorrow_hometask(message):
-    await bot.send_chat_action(message.chat.id, 'typing')
-    tomorrow = get_tomorrow_date()
+    tomorrow = str(get_tomorrow_date())
+    print(tomorrow)
     engine = create_async_engine('sqlite+aiosqlite:///23dcp.db')
     session = async_sessionmaker(bind=engine,expire_on_commit=False)
     async with session() as session:
         async with session.begin():
             try:
                 hw_finding = await session.execute(select(HW).where(HW.deadline == tomorrow))
-                hw = hw_finding.scalar().all()
-                if not hw is None:
+                if hw_finding:
+                    hw = hw_finding.scalars()
                     for h in hw:
                         home = f'{h.name}: {h.task}\n'
-                        await bot.send_message(message.chat.id, home)
+                        await message.answer(home)
                     print('ok\nвсе отправлено')
                 else:
-                    await bot.send_message(message.chat.id, 'или ничего не задавали, или админ долбоебка')
+                     await message.answer('или ничего не задавали, или админ долбоебка')
             except Exception:
-                await bot.send_message(message.chat.id,'не найдено')
+                await message.answer('не найдено')
 
-async def bebebe(message):
-    username = message.text
-    engine = create_async_engine('sqlite+aiosqlite:///23dcp.db')
-    session = async_sessionmaker(bind=engine,expire_on_commit=False)
-    async with session() as session:
-        async with session.begin():
-            users_finding = await session.execute(select(DebilBase).where (DebilBase.user == username))
-            users = users_finding.scalar().all()
-            visits: str = ''
-            if users is not None:
-                for i in users:
-                    visits += f'{i.user}, {i.idtg}, {i.time}\n'
-                print(visits)
-                await bot.send_message(settings.id_telegram, visits)
-            else:
-                await bot.send_message(message.chat.id, 'нет данных')
+def bd_to_xlsx():
+    conn = sqlite3.connect('23dcp.db')
+    df = pandas.read_sql('SELECT * FROM homework', conn)
+    # df.to_excel('homework.xlsx', index=False)
+    with pandas.ExcelWriter('homework.xlsx') as writer:
+        df.to_excel(writer, sheet_name='homework', index=False)
+        worksheet = writer.sheets['homework']
+        worksheet.column_dimensions['A'].width = 5
+        worksheet.column_dimensions['B'].width = 40
+        worksheet.column_dimensions['C'].width = 40
+        worksheet.column_dimensions['D'].width = 20
+    conn.close()
+    return 'homework.xlsx'
 
 
 def find_crypto():
@@ -101,3 +107,4 @@ def find_crypto():
         print('connection is terrible')
 
     return data, data2
+

@@ -5,4 +5,5 @@ load_dotenv()
 
 class Settings:
     token:str = os.getenv('TOKEN')
-    id_telegram: int = int(os.getenv('ID_TELEGRAM'))
+    id_telegram: str = os.getenv('ID_TELEGRAM')
+    api_key: str = os.getenv('API_KEY')
