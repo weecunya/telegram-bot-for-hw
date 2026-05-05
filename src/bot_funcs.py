@@ -1,5 +1,4 @@
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import create_async_engine
 from telebot import types
 import time
 from db_config import DebilBase
@@ -8,8 +7,10 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from db_config import DebilBase
 from config import Settings
 import requests
+from db_config import HW
 
 settings = Settings()
+
 bot = AsyncTeleBot(settings.token)
 
 
@@ -50,6 +51,26 @@ def get_tomorrow_date():
                 tomorrow.insert(0, '01')
     return '.'.join(tomorrow)
 
+
+async def get_tomorrow_hometask(message):
+    await bot.send_chat_action(message.chat.id, 'typing')
+    tomorrow = get_tomorrow_date()
+    engine = create_async_engine('sqlite+aiosqlite:///23dcp.db')
+    session = async_sessionmaker(bind=engine,expire_on_commit=False)
+    async with session() as session:
+        async with session.begin():
+            try:
+                hw_finding = await session.execute(select(HW).where(HW.deadline == tomorrow))
+                hw = hw_finding.scalar().all()
+                if not hw is None:
+                    for h in hw:
+                        home = f'{h.name}: {h.task}\n'
+                        await bot.send_message(message.chat.id, home)
+                    print('ok\nвсе отправлено')
+                else:
+                    await bot.send_message(message.chat.id, 'или ничего не задавали, или админ долбоебка')
+            except Exception:
+                await bot.send_message(message.chat.id,'не найдено')
 
 async def bebebe(message):
     username = message.text
