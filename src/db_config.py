@@ -24,8 +24,9 @@ class HW(Model):
     deadline: Mapped[str | None]
 
 async def create_all_tables():
-    engine = create_async_engine('sqlite+aiosqlite:///23dcp.db')
+    engine = create_async_engine('sqlite+aiosqlite:///23dcp.db',echo=True)
     async with engine.begin() as conn:
+        await conn.run_sync(Model.metadata.drop_all)
         await conn.run_sync(Model.metadata.create_all)
     session = async_sessionmaker(engine, expire_on_commit=False)
     async with session() as session:

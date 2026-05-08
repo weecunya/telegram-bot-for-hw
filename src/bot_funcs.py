@@ -71,13 +71,16 @@ async def get_tomorrow_hometask(message):
             try:
                 hw_finding = await session.execute(select(HW).where(HW.deadline == tomorrow))
                 if hw_finding:
-                    hw = hw_finding.scalars()
+                    hw = hw_finding.scalars().all()
+                    print(hw)
                     for h in hw:
                         home = f'{h.name}: {h.task}\n'
                         await message.answer(home)
                     print('ok\nвсе отправлено')
+                    if len(hw) == 0:
+                         await message.answer('или ничего не задавали, или админ долбоебка')
                 else:
-                     await message.answer('или ничего не задавали, или админ долбоебка')
+                    await message.answer('не найдено')
             except Exception:
                 await message.answer('не найдено')
 
